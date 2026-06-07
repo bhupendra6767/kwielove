@@ -47,3 +47,30 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pythonlibs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Secrets / env files
+.env
+.env.*
+*.env
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Python packaging
+*.egg-info/
+dist/
+build/

@@ -208,6 +208,35 @@ async def setcooldown(
     )
 
 
+@bot.tree.command(name="reload", description="Reload triggers and responses from JSON files without restarting.")
+@is_admin()
+async def reload_data(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    old_triggers = responder.trigger_count
+    old_responses = responder.response_count
+    try:
+        responder.load()
+    except Exception as e:
+        await interaction.followup.send(f"❌ Failed to reload: `{e}`", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="🔄 Data Reloaded",
+        color=discord.Color.green()
+    )
+    embed.add_field(
+        name="🎯 Triggers",
+        value=f"`{old_triggers:,}` → `{responder.trigger_count:,}`",
+        inline=True
+    )
+    embed.add_field(
+        name="💬 Responses",
+        value=f"`{old_responses:,}` → `{responder.response_count:,}`",
+        inline=True
+    )
+    embed.set_footer(text="triggers.json and responses.json reloaded successfully")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
 @bot.tree.command(name="stats", description="Show total triggers and responses loaded.")
 async def stats(interaction: discord.Interaction):
     embed = discord.Embed(
