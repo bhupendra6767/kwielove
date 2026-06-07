@@ -2,11 +2,25 @@
 database.py — SQLite helpers for enabled/disabled channels and settings.
 """
 
+import os
 import aiosqlite
 from config import DATABASE_PATH
 
 
+def _ensure_db_dir() -> None:
+    """Create the directory that will hold the database file if it doesn't exist."""
+    db_dir = os.path.dirname(DATABASE_PATH)
+    if db_dir and not os.path.isdir(db_dir):
+        print(f"[INFO] Creating database directory: {db_dir}")
+        os.makedirs(db_dir, exist_ok=True)
+        print(f"[INFO] Database directory created: {db_dir}")
+
+
 async def init_db():
+    print(f"[INFO] Database path: {DATABASE_PATH}")
+    _ensure_db_dir()
+
+    print("[INFO] Initializing database...")
     async with aiosqlite.connect(DATABASE_PATH) as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS channels (
@@ -23,9 +37,11 @@ async def init_db():
             )
         """)
         await db.commit()
+    print("[INFO] Database initialized successfully")
 
 
 async def set_channel_enabled(guild_id: int, channel_id: int, enabled: bool):
+    _ensure_db_dir()
     async with aiosqlite.connect(DATABASE_PATH) as db:
         await db.execute("""
             INSERT INTO channels (channel_id, guild_id, enabled)
@@ -36,6 +52,7 @@ async def set_channel_enabled(guild_id: int, channel_id: int, enabled: bool):
 
 
 async def is_channel_enabled(channel_id: int) -> bool:
+    _ensure_db_dir()
     async with aiosqlite.connect(DATABASE_PATH) as db:
         async with db.execute(
             "SELECT enabled FROM channels WHERE channel_id = ?", (channel_id,)
@@ -45,6 +62,7 @@ async def is_channel_enabled(channel_id: int) -> bool:
 
 
 async def get_enabled_channels(guild_id: int) -> list[int]:
+    _ensure_db_dir()
     async with aiosqlite.connect(DATABASE_PATH) as db:
         async with db.execute(
             "SELECT channel_id FROM channels WHERE guild_id = ? AND enabled = 1",
@@ -55,6 +73,7 @@ async def get_enabled_channels(guild_id: int) -> list[int]:
 
 
 async def get_guild_settings(guild_id: int) -> dict:
+    _ensure_db_dir()
     async with aiosqlite.connect(DATABASE_PATH) as db:
         async with db.execute(
             "SELECT user_cooldown, channel_cooldown FROM settings WHERE guild_id = ?",
@@ -67,6 +86,7 @@ async def get_guild_settings(guild_id: int) -> dict:
 
 
 async def set_cooldown(guild_id: int, user_cooldown: float, channel_cooldown: float):
+    _ensure_db_dir()
     async with aiosqlite.connect(DATABASE_PATH) as db:
         await db.execute("""
             INSERT INTO settings (guild_id, user_cooldown, channel_cooldown)
