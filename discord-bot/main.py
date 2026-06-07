@@ -1,5 +1,6 @@
 """
 main.py — Discord bot: automatic chat responses only.
+Includes a minimal HTTP health-check server so it runs as a Render Web Service (free tier).
 """
 
 import asyncio
@@ -8,6 +9,7 @@ import time
 import discord
 from discord import app_commands
 from discord.ext import commands
+from aiohttp import web
 
 from config import (
     DISCORD_BOT_TOKEN,
@@ -251,11 +253,44 @@ async def stats(interaction: discord.Interaction):
 
 
 # ---------------------------------------------------------------------------
-# Run
+# Health-check web server (required for Render Web Service free tier)
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
+async def health_handler(request: web.Request) -> web.Response:
+    return web.Response(text="OK", status=200)
+
+
+async def run_web_server(port: int):
+    app = web.Application()
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"[INFO] Health-check server running on port {port}")
+
+
+# ---------------------------------------------------------------------------
+# Run — starts both the web server and the Discord bot concurrently
+# ---------------------------------------------------------------------------
+
+async def main():
     if not DISCORD_BOT_TOKEN:
-        print("[Error] DISCORD_BOT_TOKEN is not set. Please add it to your environment secrets.")
-        exit(1)
-    bot.run(DISCORD_BOT_TOKEN)
+        print("[Error] DISCORD_BOT_TOKEN is not set.")
+        raise SystemExit(1)
+
+    # Start the health-check server only when PORT is provided (e.g. on Render).
+    # Locally the env var isn't set, so we skip it to avoid port conflicts.
+    port_env = os.environ.get("PORT")
+    if port_env:
+        await run_web_server(int(port_env))
+    else:
+        print("[INFO] No PORT env var — skipping health-check server (local mode)")
+
+    async with bot:
+        await bot.start(DISCORD_BOT_TOKEN)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
